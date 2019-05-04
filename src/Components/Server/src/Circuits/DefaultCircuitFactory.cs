@@ -8,6 +8,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Components.Browser;
 using Microsoft.AspNetCore.Components.Browser.Rendering;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
@@ -56,6 +57,9 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
             {
                 uriHelper.InitializeState(uriAbsolute, baseUriAbsolute);
             }
+
+            var browserNavigation = (RemoteBrowserNavigation)scope.ServiceProvider.GetRequiredService<IBrowserNavigation>();
+            browserNavigation.AttachJsRuntime(jsRuntime);
 
             var rendererRegistry = new RendererRegistry();
             var dispatcher = Renderer.CreateDefaultDispatcher();

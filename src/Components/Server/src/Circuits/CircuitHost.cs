@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components.Browser;
 using Microsoft.AspNetCore.Components.Browser.Rendering;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
@@ -120,6 +121,9 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
                 {
                     uriHelper.AttachJsRuntime(JSRuntime);
                 }
+
+                var browserNavigation = (RemoteBrowserNavigation)Services.GetRequiredService<IBrowserNavigation>();
+                browserNavigation.AttachJsRuntime(JSRuntime);
             }
         }
 

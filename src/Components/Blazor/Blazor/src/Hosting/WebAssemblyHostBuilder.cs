@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using Microsoft.AspNetCore.Blazor.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
@@ -89,7 +90,10 @@ namespace Microsoft.AspNetCore.Blazor.Hosting
             services.AddSingleton<IWebAssemblyHost, WebAssemblyHost>();
             services.AddSingleton<IJSRuntime>(WebAssemblyJSRuntime.Instance);
             services.AddSingleton<IComponentContext, WebAssemblyComponentContext>();
+
             services.AddSingleton<IUriHelper>(WebAssemblyUriHelper.Instance);
+            services.AddSingleton<RoutingService>(WebAssemblyUriHelper.Instance.RoutingService);
+
             services.AddSingleton<HttpClient>(s =>
             {
                 // Creating the URI helper needs to wait until the JS Runtime is initialized, so defer it.

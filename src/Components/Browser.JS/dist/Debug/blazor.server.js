@@ -14817,8 +14817,9 @@ function enableNavigationInterception(assemblyName, functionName) {
             var absoluteHref = toAbsoluteUri(href);
             var targetAttributeValue = anchorTarget.getAttribute('target');
             var opensInSameFrame = !targetAttributeValue || targetAttributeValue === '_self';
+            var relativeUrl = isWithinBaseUriSpace(absoluteHref);
             // Don't stop ctrl/meta-click (etc) from opening links in new tabs/windows
-            if (isWithinBaseUriSpace(absoluteHref) && !eventHasSpecialKey(event) && opensInSameFrame) {
+            if (relativeUrl && !eventHasSpecialKey(event) && opensInSameFrame) {
                 event.preventDefault();
                 performInternalNavigation(absoluteHref);
             }

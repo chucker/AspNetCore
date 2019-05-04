@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 using Interop = Microsoft.AspNetCore.Components.Browser.BrowserUriHelperInterop;
 
@@ -23,15 +24,13 @@ namespace Microsoft.AspNetCore.Blazor.Services
         // interop. We can construct instances for testing.
         internal WebAssemblyUriHelper()
         {
+            RoutingService = new RoutingService(new WebAssemblyBrowserNavigation());
         }
+
+        internal RoutingService RoutingService { get; }
 
         protected override void EnsureInitialized()
         {
-            WebAssemblyJSRuntime.Instance.Invoke<object>(
-                Interop.EnableNavigationInterception,
-                typeof(WebAssemblyUriHelper).Assembly.GetName().Name,
-                nameof(NotifyLocationChanged));
-
             // As described in the comment block above, BrowserUriHelper is only for
             // client-side (Mono) use, so it's OK to rely on synchronicity here.
             var baseUri = WebAssemblyJSRuntime.Instance.Invoke<string>(Interop.GetBaseUri);
@@ -54,9 +53,19 @@ namespace Microsoft.AspNetCore.Blazor.Services
         /// For framework use only.
         /// </summary>
         [JSInvokable(nameof(NotifyLocationChanged))]
-        public static void NotifyLocationChanged(string newAbsoluteUri)
+        public static void NotifyLocationChanged(string uriAbsolute)
         {
-            Instance.SetAbsoluteUri(newAbsoluteUri);
+            var instance = Instance;
+            if (instance.RoutingService.Route(uriAbsolute) == null)
+            {
+                // We do not have an entry corresponding to the incoming route. That is, this is not a component.
+                // Perform a regular browser navigation instead.
+
+                instance.NavigateTo(uriAbsolute, forceLoad: true);
+                return;
+            }
+
+            Instance.SetAbsoluteUri(uriAbsolute);
             Instance.TriggerOnLocationChanged();
         }
 

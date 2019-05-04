@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
@@ -14,8 +15,8 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
     /// </summary>
     public class RemoteUriHelper : UriHelperBase
     {
-        private IJSRuntime _jsRuntime;
         private readonly ILogger<RemoteUriHelper> _logger;
+        private IJSRuntime _jsRuntime;
 
         /// <summary>
         /// Creates a new <see cref="RemoteUriHelper"/> instance.
@@ -53,11 +54,6 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
                 throw new InvalidOperationException("JavaScript runtime already initialized.");
             }
             _jsRuntime = jsRuntime;
-            _jsRuntime.InvokeAsync<object>(
-                    Interop.EnableNavigationInterception,
-                    typeof(RemoteUriHelper).Assembly.GetName().Name,
-                    nameof(NotifyLocationChanged));
-
             _logger.LogDebug($"{nameof(RemoteUriHelper)} initialized.");
         }
 
@@ -75,7 +71,17 @@ namespace Microsoft.AspNetCore.Components.Server.Circuits
             }
 
             var uriHelper = (RemoteUriHelper)circuit.Services.GetRequiredService<IUriHelper>();
+            var routing = circuit.Services.GetRequiredService<RoutingService>();
 
+            if (routing.Route(uriAbsolute) == null)
+            {
+                // We do not have an entry corresponding to the incoming route. That is, this is not a component.
+                // Perform a regular browser navigation instead.
+
+                uriHelper.NavigateTo(uriAbsolute, forceLoad: true);
+                return;
+            }
+            
             uriHelper.SetAbsoluteUri(uriAbsolute);
 
             uriHelper._logger.LogDebug($"Location changed to '{uriAbsolute}'.");
