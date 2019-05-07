@@ -6,52 +6,67 @@ import { getAssemblyNameFromUrl } from './Platform/Url';
 import { renderBatch } from './Rendering/Renderer';
 import { SharedMemoryRenderBatch } from './Rendering/RenderBatch/SharedMemoryRenderBatch';
 import { Pointer } from './Platform/Platform';
-import { fetchBootConfigAsync, loadEmbeddedResourcesAsync, shouldAutoStart } from './BootCommon';
+import { fetchBootConfigAsync, loadEmbeddedResourcesAsync, shouldAutoStart, BlazorBootProgress } from './BootCommon';
 
 let started = false;
 
+var bootProgress = new BlazorBootProgress();
+
 async function boot(options?: any) {
+    if (started) {
+        throw new Error('Blazor has already started.');
+    }
+    started = true;
 
-  if (started) {
-    throw new Error('Blazor has already started.');
-  }
-  started = true;
+    // Configure environment for execution under Mono WebAssembly with shared-memory rendering
+    const platform = Environment.setPlatform(monoPlatform);
+    window['Blazor'].platform = platform;
+    window['Blazor']._internal.renderBatch = (browserRendererId: number, batchAddress: Pointer) => {
+        renderBatch(browserRendererId, new SharedMemoryRenderBatch(batchAddress));
+    };
 
-  // Configure environment for execution under Mono WebAssembly with shared-memory rendering
-  const platform = Environment.setPlatform(monoPlatform);
-  window['Blazor'].platform = platform;
-  window['Blazor']._internal.renderBatch = (browserRendererId: number, batchAddress: Pointer) => {
-    renderBatch(browserRendererId, new SharedMemoryRenderBatch(batchAddress));
-  };
+    // Fetch the boot JSON file
+    const bootConfig = await fetchBootConfigAsync();
 
-  // Fetch the boot JSON file
-  const bootConfig = await fetchBootConfigAsync();
-  const embeddedResourcesPromise = loadEmbeddedResourcesAsync(bootConfig);
+    var totalResources = bootConfig.assemblyReferences.length +
+        bootConfig.cssReferences.length +
+        bootConfig.jsReferences.length +
+        1; // entryPoint
 
-  if (!bootConfig.linkerEnabled) {
-    console.info('Blazor is running in dev mode without IL stripping. To make the bundle size significantly smaller, publish the application or see https://go.microsoft.com/fwlink/?linkid=870414');
-  }
+    bootProgress.dispatchBootProgress([0, totalResources]);
 
-  // Determine the URLs of the assemblies we want to load, then begin fetching them all
-  const loadAssemblyUrls = [bootConfig.main]
-    .concat(bootConfig.assemblyReferences)
-    .map(filename => `_framework/_bin/${filename}`);
+    const embeddedResourcesPromise = loadEmbeddedResourcesAsync(bootConfig);
 
-  try {
-    await platform.start(loadAssemblyUrls);
-  } catch (ex) {
-    throw new Error(`Failed to start platform. Reason: ${ex}`);
-  }
+    bootProgress.dispatchBootProgress([0 + bootConfig.cssReferences.length + bootConfig.jsReferences.length,
+        totalResources]);
 
-  // Before we start running .NET code, be sure embedded content resources are all loaded
-  await embeddedResourcesPromise;
+    if (!bootConfig.linkerEnabled) {
+        console.info('Blazor is running in dev mode without IL stripping. To make the bundle size significantly smaller, publish the application or see https://go.microsoft.com/fwlink/?linkid=870414');
+    }
 
-  // Start up the application
-  const mainAssemblyName = getAssemblyNameFromUrl(bootConfig.main);
-  platform.callEntryPoint(mainAssemblyName, bootConfig.entryPoint, []);
+    // Determine the URLs of the assemblies we want to load, then begin fetching them all
+    const loadAssemblyUrls = [bootConfig.main]
+        .concat(bootConfig.assemblyReferences)
+        .map(filename => `_framework/_bin/${filename}`);
+
+    try {
+        await platform.start(loadAssemblyUrls);
+    } catch (ex) {
+        throw new Error(`Failed to start platform. Reason: ${ex}`);
+    }
+
+    // Before we start running .NET code, be sure embedded content resources are all loaded
+    await embeddedResourcesPromise;
+
+    // Start up the application
+    const mainAssemblyName = getAssemblyNameFromUrl(bootConfig.main);
+    platform.callEntryPoint(mainAssemblyName, bootConfig.entryPoint, []);
 }
 
 window['Blazor'].start = boot;
+
+window['Blazor'].bootProgress = bootProgress;
+
 if (shouldAutoStart()) {
-  boot();
+    boot();
 }

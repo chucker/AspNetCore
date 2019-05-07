@@ -1,3 +1,5 @@
+import { SimpleEventDispatcher, SignalDispatcher } from "strongly-typed-events";
+
 export async function fetchBootConfigAsync() {
   // Later we might make the location of this configurable (e.g., as an attribute on the <script>
   // element that's importing this file), but currently there isn't a use case for that.
@@ -44,3 +46,37 @@ export function shouldAutoStart() {
     document.currentScript &&
     document.currentScript.getAttribute('autostart') !== 'false';
 }
+
+export class BlazorBootProgress {
+    private _onBootProgress = new SimpleEventDispatcher<[number, number]>();
+    private _onBootCompletion = new SignalDispatcher();
+    private _onBootFailure = new SignalDispatcher();
+
+    public dispatchBootProgress(args: [number, number]) {
+        //if (args[1] == 0)
+        //    return;
+
+        console.log(args[0]);
+        console.log(args[1]);
+
+        var blazorBootPercentage = document.getElementById('blazorBootPercentage');
+
+        if (blazorBootPercentage)
+            //blazorBootPercentage.innerText = ((args[0] / args[1]) * 100).toString();
+            blazorBootPercentage.innerHTML = args[0].toString() + " / " + args[1].toString();
+
+        this._onBootProgress.dispatch(args);
+    }
+
+    public onBootProgress() {
+        return this._onBootProgress.asEvent();
+    }
+
+    public onBootCompletion() {
+        return this._onBootCompletion.asEvent();
+    }
+}
+
+//window['BlazorBoot'] = {
+//    private 
+//}
