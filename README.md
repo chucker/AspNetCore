@@ -1,3 +1,17 @@
+This is a fork of AspNetCore to experiment with a progress indicator when booting Blazor (currently only implemented for client-side Blazor / WebAssembly, but trivial to expand to server-side as well).
+
+## Build
+
+1. inside `src/Components/Browser.JS`, restore npm packages
+2. run `npm run build:debug` to generate a new `blazor.webassembly.js`
+
+## Use in your Blazor site
+
+1. you need to provide a div in your `wwwroot/index.html`: `<div id="blazorBootPercentage"></div>`. If it isn't there, this will silently skip (by design), as it will be assumed you don't want a progress bar. You're responsible for styling this meaningfully.
+2. **after each build** (sorry), you need to manually replace `bin\Debug\netstandard2.1\dist\_framework\blazor.webassembly.js` with the one generated above. (Possibly `netstandard2.0` in your case.)
+
+-----
+
 ASP.NET Core
 ============
 
