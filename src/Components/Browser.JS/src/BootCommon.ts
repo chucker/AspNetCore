@@ -7,6 +7,21 @@ export async function fetchBootConfigAsync() {
   return bootConfigResponse.json() as Promise<BootJsonData>;
 }
 
+function progressPromise(promises, tickCallback) {
+    var len = promises.length;
+    var progress = 0;
+
+    function tick(promise) {
+        promise.then(function () {
+            progress++;
+            tickCallback(progress);
+        });
+        return promise;
+    }
+
+    return Promise.all(promises.map(tick));
+}
+
 export function loadEmbeddedResourcesAsync(bootConfig: BootJsonData): Promise<any> {
   const cssLoadingPromises = bootConfig.cssReferences.map(cssReference => {
     const linkElement = document.createElement('link');
@@ -19,7 +34,8 @@ export function loadEmbeddedResourcesAsync(bootConfig: BootJsonData): Promise<an
     scriptElement.src = jsReference;
     return loadResourceFromElement(scriptElement);
   });
-  return Promise.all(cssLoadingPromises.concat(jsLoadingPromises));
+    return progressPromise(cssLoadingPromises.concat(jsLoadingPromises),
+        BlazorBootProgress.incrementCompleted());
 }
 
 function loadResourceFromElement(element: HTMLElement) {
@@ -48,35 +64,31 @@ export function shouldAutoStart() {
 }
 
 export class BlazorBootProgress {
-    private _onBootProgress = new SimpleEventDispatcher<[number, number]>();
-    private _onBootCompletion = new SignalDispatcher();
-    private _onBootFailure = new SignalDispatcher();
+    private static _completed: number = 0;
+    private static _total?: number;
 
-    public dispatchBootProgress(args: [number, number]) {
-        //if (args[1] == 0)
-        //    return;
+    public static incrementCompleted() {
+        BlazorBootProgress._completed++;
 
-        console.log(args[0]);
-        console.log(args[1]);
+        BlazorBootProgress.dispatchBootProgress();
+    }
+
+    public static setTotal(total: number) {
+        BlazorBootProgress._total = total;
+
+        BlazorBootProgress.dispatchBootProgress();
+    }
+
+    public static dispatchBootProgress() {
+        if (BlazorBootProgress._total == null)
+            return;
 
         var blazorBootPercentage = document.getElementById('blazorBootPercentage');
 
         if (blazorBootPercentage)
             //blazorBootPercentage.innerText = ((args[0] / args[1]) * 100).toString();
-            blazorBootPercentage.innerHTML = args[0].toString() + " / " + args[1].toString();
-
-        this._onBootProgress.dispatch(args);
-    }
-
-    public onBootProgress() {
-        return this._onBootProgress.asEvent();
-    }
-
-    public onBootCompletion() {
-        return this._onBootCompletion.asEvent();
+            blazorBootPercentage.innerHTML =
+                BlazorBootProgress._completed.toString() + " / " +
+                BlazorBootProgress._total.toString();
     }
 }
-
-//window['BlazorBoot'] = {
-//    private 
-//}

@@ -10,8 +10,6 @@ import { fetchBootConfigAsync, loadEmbeddedResourcesAsync, shouldAutoStart, Blaz
 
 let started = false;
 
-var bootProgress = new BlazorBootProgress();
-
 async function boot(options?: any) {
     if (started) {
         throw new Error('Blazor has already started.');
@@ -33,12 +31,9 @@ async function boot(options?: any) {
         bootConfig.jsReferences.length +
         1; // entryPoint
 
-    bootProgress.dispatchBootProgress([0, totalResources]);
+    BlazorBootProgress.setTotal(totalResources);
 
     const embeddedResourcesPromise = loadEmbeddedResourcesAsync(bootConfig);
-
-    bootProgress.dispatchBootProgress([0 + bootConfig.cssReferences.length + bootConfig.jsReferences.length,
-        totalResources]);
 
     if (!bootConfig.linkerEnabled) {
         console.info('Blazor is running in dev mode without IL stripping. To make the bundle size significantly smaller, publish the application or see https://go.microsoft.com/fwlink/?linkid=870414');
@@ -64,8 +59,6 @@ async function boot(options?: any) {
 }
 
 window['Blazor'].start = boot;
-
-window['Blazor'].bootProgress = bootProgress;
 
 if (shouldAutoStart()) {
     boot();

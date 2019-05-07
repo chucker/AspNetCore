@@ -1,6 +1,7 @@
 import { MethodHandle, System_Object, System_String, System_Array, Pointer, Platform } from '../Platform';
 import { getFileNameFromUrl } from '../Url';
 import { attachDebuggerHotkey, hasDebuggingEnabled } from './MonoDebugger';
+import { BlazorBootProgress } from '../../BootCommon';
 
 const assemblyHandleCache: { [assemblyName: string]: number } = {};
 const typeHandleCache: { [fullyQualifiedTypeName: string]: number } = {};
@@ -285,7 +286,10 @@ function asyncLoad(url) {
     xhr.responseType = 'arraybuffer';
     xhr.onload = function xhr_onload() {
       if (xhr.status == 200 || xhr.status == 0 && xhr.response) {
-        const asm = new Uint8Array(xhr.response);
+          const asm = new Uint8Array(xhr.response);
+
+          BlazorBootProgress.incrementCompleted();
+
         resolve(asm);
       } else {
         reject(xhr);
